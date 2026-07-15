@@ -1,0 +1,237 @@
+# Local Development Environment Variables
+# DO NOT COMMIT THIS FILE TO GIT (already in .gitignore)
+#
+# Copy this file to .dev.vars and fill in your actual values:
+# cp .dev.vars.example .dev.vars
+
+# ============================================
+# Authentication (better-auth) - REQUIRED
+# ============================================
+
+# Generate a secure secret (32+ characters):
+# Run: openssl rand -hex 32
+BETTER_AUTH_SECRET=your-generated-secret-here
+
+# Local development URL (must match exactly)
+# Use http://localhost:5173, NOT http://127.0.0.1:5173
+BETTER_AUTH_URL=http://localhost:5173
+
+# ============================================
+# Google OAuth - OPTIONAL
+# ============================================
+# Get credentials from: https://console.cloud.google.com/
+# 1. Create OAuth 2.0 Client ID
+# 2. Add authorized redirect URI: http://localhost:5173/api/auth/callback/google
+# 3. Copy Client ID and Secret below
+
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret
+
+# ============================================
+# Email Auth Control - OAUTH-ONLY BY DEFAULT
+# ============================================
+# Email/password login is DISABLED by default (OAuth-only mode).
+# Set these to "true" to enable email authentication:
+#
+# ENABLE_EMAIL_LOGIN=true   → Enable email/password login
+# ENABLE_EMAIL_SIGNUP=true  → Also allow new email signups (requires ENABLE_EMAIL_LOGIN)
+#
+# The UI automatically adapts based on these settings via /api/auth/config
+#
+# Restricting WHO can sign in (incl. Google OAuth) is done IN CODE via the
+# allowlist below — NOT only the Google consent screen. A consent screen set to
+# "External" (required whenever any user is on a non-Workspace domain) lets ANY
+# Google account sign in; the consent screen is defence-in-depth, not the gate.
+# See CLAUDE.md "Auth" section and docs/SECURITY.md.
+
+# Uncomment to enable email/password authentication:
+# ENABLE_EMAIL_LOGIN=true
+# ENABLE_EMAIL_SIGNUP=true
+
+# ============================================
+# Signup Allowlist - OPTIONAL (issue #88)
+# ============================================
+# Invite-only / single-tenant gate, enforced in code (src/server/modules/auth/
+# index.ts, isSignupAllowed). The gate ACTIVATES when either list below is set
+# (or AUTH_ALLOWLIST=true); only matching emails can then sign in. Enforced on
+# BOTH account creation (user.create.before) AND every login (session.create.
+# before) — so removing an operator (or a row predating the gate) locks them out
+# on next sign-in too. Unset (default) → open signup, so a fresh public fork is
+# unaffected.
+# Blocked sign-ins surface as "This account isn't authorised" on the sign-in
+# page (see issue #69). Pairs with VITE_TENANCY_MODE=shared for a turnkey
+# single-tenant deployment.
+#
+# ⚠️  For a client deploy you almost always want at least ALLOWED_AUTH_DOMAINS —
+#     an unset allowlist means anyone with a Google account can sign up.
+# ALLOWED_AUTH_EMAILS=alice@acme.com,bob@acme.com
+# ALLOWED_AUTH_DOMAINS=acme.com,jezweb.net
+# AUTH_ALLOWLIST=true   # force the gate on even with empty lists → fail closed
+
+# ============================================
+# Email Configuration - OPTIONAL
+# ============================================
+# Only needed for email verification or password reset
+# Resend recommended: https://resend.com/
+
+EMAIL_FROM=noreply@yourdomain.com
+EMAIL_API_KEY=re_...
+
+# ============================================
+# Application Configuration
+# ============================================
+
+# Application name (displayed in UI)
+APP_NAME=Vite Flare Starter
+
+# Node environment (development | production)
+NODE_ENV=development
+
+# Tenancy mode (issue #80). Default per-user: every row scoped to its creator.
+# Set to "shared" for a single-tenant / small-team fork (one business, a few
+# trusted logins behind the allowlist) where colleagues should see and act on
+# the SAME records. Honoured wherever a module uses the scopeUser() helper —
+# the entities module is the fully-converted reference. Build-time flag (it's a
+# deploy-time decision per fork, not a runtime toggle).
+# VITE_TENANCY_MODE=shared
+
+# ============================================
+# Chat Agent Tuning - OPTIONAL
+# ============================================
+# Tool-loop step cap. The default (12) suits multi-tool / RAG flows
+# (find_tools → search → re-search → synthesise). Lower only if you want
+# to bound cost on a single-tool agent; too low and the agent runs out of
+# steps before writing a reply (tools complete, no answer). See issue #73.
+# CHAT_MAX_STEPS=12
+
+# Thinking / reasoning control for the chat agent. Workers AI reasoning models
+# (the default Kimi K2.6) think by default — they now have a real token budget
+# and the reasoning surfaces in the chat UI's Reasoning accordion. Set to "off"
+# to disable thinking (sends Kimi's chat_template_kwargs.thinking=false through
+# the workers-ai-provider) — useful for forks doing tool-heavy / structured
+# work where reasoning models run away (see the llm-patterns rule). Default: on.
+# CHAT_REASONING=off
+
+# Model roles (issue #87) — pick the model for each *job* without editing code.
+# Two roles, both defaulting to the free Workers AI default (Kimi K2.6):
+#   composer — templated / bounded-structured calls (chat titles, conversation
+#              summaries, /extract). Thinking is forced OFF for this role so a
+#              reasoning model can't burn the (often capped) output budget
+#              thinking and return empty content.
+#   reasoner — open-ended work (scheduled tasks following a skill). Thinking on.
+# The Kimi default works well for both — leave these unset unless you have a
+# reason to swap. CAVEAT: some composer call sites use AI SDK structured output
+# (generateObject / Output.object via workers-ai-provider), and not every model
+# handles that — the gpt-oss family, for instance, returns empty there (verified
+# 2026-06-10; see ~/.claude/rules/workers-ai-gotchas.md). If you override
+# composer, pick a model proven on structured output (e.g. Kimi, nemotron) or
+# you'll break /extract + conversation titles.
+# MODEL_ROLE_COMPOSER=@cf/moonshotai/kimi-k2.6
+# MODEL_ROLE_REASONER=@cf/moonshotai/kimi-k2.6
+
+# Scope the agent's tool catalogue per fork (issue #74). A smaller catalogue
+# noticeably improves the free Workers AI default models — they stop wandering
+# into irrelevant tools. Entries are comma-separated; each matches a tool name
+# exactly, or as a prefix when ending in '*'. Set at most one.
+#   Allowlist (agent sees ONLY these):
+# CHAT_TOOLS_INCLUDE=core_*,knowledge_*,web_search,entity_*
+#   Denylist (drop these from the full catalogue):
+# CHAT_TOOLS_EXCLUDE=slack_*,notion_*,atlassian_*,image_*,media_*
+
+# ============================================
+# Feature Flags
+# ============================================
+# Control which features are shown in the application.
+
+# Development Tools (auto-enabled in dev mode)
+# VITE_FEATURE_STYLE_GUIDE=true    # Enable style guide in production
+# VITE_FEATURE_COMPONENTS=false    # Disable components showcase
+
+# Durable Object agent example pages — the DO code is always compiled
+# (so Claude can reference the pattern) but the nav items are hidden
+# unless explicitly enabled. Set to "true" to reveal.
+# VITE_FEATURE_VOICE_AGENT=true    # /dashboard/voice-example (@cloudflare/voice)
+# VITE_FEATURE_VIDEO_AGENT=true    # /dashboard/video-example (sampled frames → Workers AI vision)
+
+# MCP Connectors — per-user OAuth/bearer connections to external MCP servers
+# VITE_FEATURE_CONNECTORS=true
+
+# Builder mode default — controls whether the developer-facing sidebar
+# section (Components / Style guide / Voice / Video) is revealed on
+# first visit. Default ON (starter audience is builders). Forks shipping
+# a polished product to non-builder end users set this to "false" so
+# their customers don't see the dev surfaces.
+# VITE_DEFAULT_BUILDER_MODE=false
+
+# ============================================
+# PRODUCTION SECRETS
+# ============================================
+# For production, set secrets via Wrangler CLI:
+#
+# echo "your-production-secret" | npx wrangler secret put BETTER_AUTH_SECRET
+# echo "https://your-worker.workers.dev" | npx wrangler secret put BETTER_AUTH_URL
+# echo "your-google-client-id" | npx wrangler secret put GOOGLE_CLIENT_ID
+# echo "your-google-client-secret" | npx wrangler secret put GOOGLE_CLIENT_SECRET
+#
+# Email login is disabled by default. To enable in production:
+# echo "true" | npx wrangler secret put ENABLE_EMAIL_LOGIN
+# echo "true" | npx wrangler secret put ENABLE_EMAIL_SIGNUP
+#
+# Never commit production secrets to git!
+
+# ============================================
+# Google Places (optional — powers places_search + show_map)
+# ============================================
+# Pairs with the show_map inline UI tool to render map answers like claude.ai.
+# Get a key: https://console.cloud.google.com → APIs & Services → Credentials.
+# Enable "Places API (New)" on the same project. Restrict the key to your
+# Worker routes in production.
+# GOOGLE_PLACES_API_KEY=your-google-places-api-key
+
+# ============================================
+# Microsoft 365 Workspace (optional — Outlook / OneDrive / Calendar)
+# ============================================
+# Native Microsoft Graph integration — agent tools for Outlook mail,
+# OneDrive files, and the user's calendar (with optional Teams meeting
+# links). Parallels the Google Workspace module in pattern + scope.
+#
+# Setup:
+#   1. Visit https://entra.microsoft.com → App registrations → New registration
+#   2. Supported account types: "Accounts in any organizational directory
+#      and personal Microsoft accounts" (uses the /common endpoint)
+#   3. Redirect URI type: Web, value: https://YOUR_DOMAIN/api/microsoft-workspace/callback
+#   4. After creation: note the "Application (client) ID"
+#   5. Certificates & secrets → New client secret → copy the value
+#   6. API permissions → Add → Microsoft Graph → Delegated → tick these:
+#        - offline_access
+#        - openid, profile, email, User.Read
+#        - Mail.Read, Mail.Send
+#        - Files.Read, Files.ReadWrite
+#        - Calendars.ReadWrite
+#      Click "Grant admin consent" if you're an admin of the tenant.
+#
+# MICROSOFT_WORKSPACE_CLIENT_ID=your-azure-app-client-id
+# MICROSOFT_WORKSPACE_CLIENT_SECRET=your-azure-app-client-secret
+#
+# Optional: restrict to a single tenant (otherwise `common` = work + personal
+# accounts, `organizations` = work only, `consumers` = personal only):
+# MICROSOFT_WORKSPACE_TENANT=common
+
+# ============================================
+# MCP Servers (optional)
+# ============================================
+# Auto-discovered via the MCP_<ID>_URL / _TOKEN / _TRANSPORT convention.
+# The chat agent connects on startup and exposes the remote tools inline.
+# Example:
+# MCP_WEATHER_URL=https://weather.mcp.example.com/mcp
+# MCP_WEATHER_TOKEN=your-bearer-token
+# MCP_WEATHER_TRANSPORT=http
+
+# ============================================
+# NOTES
+# ============================================
+# - .dev.vars is for LOCAL DEVELOPMENT ONLY
+# - Production uses Cloudflare Secrets (set via wrangler CLI)
+# - Never commit .dev.vars to git (it's in .gitignore)
+# - BETTER_AUTH_URL must match your actual URL exactly
+# - Google OAuth redirect URI must be added to Google Cloud Console
