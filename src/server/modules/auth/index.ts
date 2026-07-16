@@ -133,6 +133,8 @@ export function createAuthFromEnv(d1: D1Database, env: Record<string, unknown>) 
     APP_URL: env['APP_URL'] as string | undefined,
     ENABLE_EMAIL_LOGIN: env['ENABLE_EMAIL_LOGIN'] as string | undefined,
     ENABLE_EMAIL_SIGNUP: env['ENABLE_EMAIL_SIGNUP'] as string | undefined,
+    ENABLE_OAUTH_LOGIN: env['ENABLE_OAUTH_LOGIN'] as string | undefined,
+    REQUIRE_EMAIL_VERIFICATION: env['REQUIRE_EMAIL_VERIFICATION'] as string | undefined,
     TRUSTED_ORIGINS: env['TRUSTED_ORIGINS'] as string | undefined,
     TEST_AUTH_TOKEN: env['TEST_AUTH_TOKEN'] as string | undefined,
     ALLOWED_AUTH_EMAILS: env['ALLOWED_AUTH_EMAILS'] as string | undefined,
@@ -160,8 +162,21 @@ export function createAuth(
     EMAIL_FROM?: string
     APP_NAME?: string
     APP_URL?: string
-    ENABLE_EMAIL_LOGIN?: string // Set to 'true' to enable email/password (default: disabled)
-    ENABLE_EMAIL_SIGNUP?: string // Set to 'true' to allow signups (requires ENABLE_EMAIL_LOGIN)
+    ENABLE_EMAIL_LOGIN?: string // Set to 'false' to disable email/password (default: enabled)
+    ENABLE_EMAIL_SIGNUP?: string // Set to 'false' to disable signups (requires ENABLE_EMAIL_LOGIN)
+    /**
+     * Control OAuth logins globally. Set to 'true' to enable OAuth providers
+     * when credentials are present. Default: disabled (so email/password
+     * auth is used by default). This is useful for private deploys that
+     * prefer simple email/password auth without external OAuth dependency.
+     */
+    ENABLE_OAUTH_LOGIN?: string
+    /**
+     * When 'true' require email verification for email signup. Default: false
+     * (no OTP/verification required). Set to 'true' when you have an email
+     * provider configured and you want verified accounts.
+     */
+    REQUIRE_EMAIL_VERIFICATION?: string
     TRUSTED_ORIGINS?: string
     /**
      * Signup allowlist (issue #88) — single-tenant / invite-only gate. Both
@@ -208,9 +223,14 @@ export function createAuth(
   const appName = env.APP_NAME || 'Vite Flare Starter'
   // Email login is DISABLED by default (OAuth-only mode)
   // Set ENABLE_EMAIL_LOGIN=true to allow email/password authentication
-  const emailLoginEnabled = env.ENABLE_EMAIL_LOGIN === 'true'
-  // Email signup requires login to be enabled first
-  const emailSignupEnabled = emailLoginEnabled && env.ENABLE_EMAIL_SIGNUP === 'true'
+  // Email/password is ENABLED by default unless explicitly disabled.
+  const emailLoginEnabled = env.ENABLE_EMAIL_LOGIN === undefined ? true : env.ENABLE_EMAIL_LOGIN === 'true'
+  // Email signup is allowed by default when email login is enabled unless explicitly disabled.
+  const emailSignupEnabled = emailLoginEnabled && (env.ENABLE_EMAIL_SIGNUP === undefined ? true : env.ENABLE_EMAIL_SIGNUP === 'true')
+  // OAuth is DISABLED by default; set ENABLE_OAUTH_LOGIN='true' to allow provider logins when credentials exist.
+  const oauthEnabled = env.ENABLE_OAUTH_LOGIN === 'true'
+  // Email verification (OTP/confirm) is disabled by default; require only when explicitly configured.
+  const requireEmailVerificationFlag = env.REQUIRE_EMAIL_VERIFICATION === 'true'
   // Google OAuth access is controlled at Google Cloud Console level:
   // - Set OAuth consent screen "User type" to "Internal" for domain-only access
 
@@ -248,9 +268,10 @@ export function createAuth(
     // See CLAUDE.md for configuration: ENABLE_EMAIL_LOGIN=true, ENABLE_EMAIL_SIGNUP=true
     emailAndPassword: {
       enabled: emailLoginEnabled,
-      // Only require verification when an email provider is configured to deliver it.
-      // Without this, users sign up but can never verify → permanently locked out.
-      requireEmailVerification: !!(env.EMAIL_API_KEY && env.EMAIL_FROM),
+      // Require verification only when operator explicitly requests it via
+      // REQUIRE_EMAIL_VERIFICATION or when an email provider is configured
+      // AND the flag is set. Default: no email verification required.
+      requireEmailVerification: requireEmailVerificationFlag || !!(env.EMAIL_API_KEY && env.EMAIL_FROM && env.REQUIRE_EMAIL_VERIFICATION === 'true'),
       revokeSessionsOnPasswordReset: true,
       disableSignUp: !emailSignupEnabled,
 
@@ -435,7 +456,8 @@ export function createAuth(
         clientId: env.GOOGLE_CLIENT_ID || '',
         clientSecret: env.GOOGLE_CLIENT_SECRET || '',
         // Always enabled when credentials exist - domain restriction is at Google Cloud level
-        enabled: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
+        // Enabled only when credentials exist AND OAuth is allowed by env.
+        enabled: oauthEnabled && !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
         // Map Google profile to user fields with fallback for missing name
         mapProfileToUser: (profile) => ({
           name: profile.name || profile.email?.split('@')[0] || 'User',
