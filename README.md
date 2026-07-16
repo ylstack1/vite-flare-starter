@@ -2,7 +2,7 @@
 
 **Production-ready AI agent starter kit for Cloudflare Workers.** Ship a conversational AI product with tool calling, skills, file uploads, and admin ops — built the way we build at Jezweb.
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/jezweb/vite-flare-starter)
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/ylstack1/vite-flare-starter)
 
 **[Live Demo](https://vite-flare-starter.webfonts.workers.dev)** · **[Developer Guide](./CLAUDE.md)** · **[Forking Guide](./FORKING.md)**
 

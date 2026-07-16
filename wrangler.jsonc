@@ -2,9 +2,11 @@
 // Documentation: https://developers.cloudflare.com/workers/configuration/
 {
   "name": "vite-flare-starter",
-  // IMPORTANT: Remove account_id before committing to public repo
-  // Set via CLOUDFLARE_ACCOUNT_ID env var or wrangler will prompt
-  "account_id": "0460574641fdbb98159c98ebf593e2bd",
+  // IMPORTANT: Do NOT commit your personal `account_id` to a public repo.
+  // Leave `account_id` out for public forks — Wrangler will use the
+  // currently-authenticated account if missing. To automate installs,
+  // use `wrangler.template.jsonc` (in this repo) and set the real values
+  // in CI / Cloudflare dashboard or via env secrets.
   "compatibility_date": "2026-04-01",
   "compatibility_flags": ["nodejs_compat_v2"],
 
@@ -37,8 +39,11 @@
   "d1_databases": [
     {
       "binding": "DB",
+      // Provide a `database_name` here; create the D1 database then
+      // paste the `database_id` into your local `wrangler.jsonc` or the
+      // Cloudflare dashboard. We omit `database_id` in the template so
+      // forks don't leak the original project's IDs.
       "database_name": "vite-flare-starter-db",
-      "database_id": "8047024a-ffa7-4ea1-90f9-7ccbe3c2ce16",
       "migrations_dir": "drizzle"
     }
   ],

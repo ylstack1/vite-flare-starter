@@ -1,0 +1,51 @@
+// Template Wrangler configuration for forks / automated deploys.
+// Copy this to `wrangler.jsonc` and fill in the placeholders, or use your
+// CI / Cloudflare dashboard to inject the real values as secrets.
+{
+  "name": "vite-flare-starter",
+  // Replace with your account ID or leave out to use the currently
+  // authenticated account during `wrangler` commands.
+  "account_id": "<YOUR_CLOUDFLARE_ACCOUNT_ID>",
+
+  "compatibility_date": "2026-04-01",
+
+  "main": "./src/server/index.ts",
+
+  "assets": {
+    "directory": "./dist/client",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/agents/*", "/mcp/*"]
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "vite-flare-starter-db",
+      "database_id": "<YOUR_D1_DATABASE_ID>",
+      "migrations_dir": "drizzle"
+    }
+  ],
+
+  "r2_buckets": [
+    { "binding": "AVATARS", "bucket_name": "vite-flare-starter-avatars" },
+    { "binding": "FILES", "bucket_name": "vite-flare-starter-files" },
+    { "binding": "SKILLS", "bucket_name": "vite-flare-starter-skills" },
+    { "binding": "DATA_LAKE", "bucket_name": "vite-flare-starter-data-lake" }
+  ],
+
+  "ai": { "binding": "AI" },
+  "images": { "binding": "IMAGES" },
+  "media": { "binding": "MEDIA" },
+
+  "workflows": [
+    { "name": "vite-flare-starter-batch-workflow", "binding": "BATCH_WORKFLOW", "class_name": "ProcessBatchWorkflow" }
+  ],
+
+  "triggers": { "crons": ["*/15 * * * *"] },
+
+  "durable_objects": { "bindings": [] },
+
+  "migrations": [],
+
+  "observability": { "enabled": true, "logs": { "invocation_logs": true, "head_sampling_rate": 1 } }
+}
